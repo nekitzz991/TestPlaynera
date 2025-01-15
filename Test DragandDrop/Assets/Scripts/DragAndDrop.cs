@@ -1,58 +1,56 @@
 using UnityEngine;
 
-[RequireComponent(typeof(Collider2D), typeof(Rigidbody2D))]
 public class DragAndDrop : MonoBehaviour
 {
     private Vector3 offset;
-    private bool isDragging = false;
-    private Rigidbody2D rb;
-    private Collider2D col;
+    private Rigidbody2D rb2d;
+    private bool isOnShelf = false;
 
-    void Start()
+    public string destinationTag = "Shelf";
+    public float snapRadius = 0.5f;
+
+    void Awake()
     {
-        rb = GetComponent<Rigidbody2D>();
-        col = GetComponent<Collider2D>();
-        rb.gravityScale = 1; 
+        rb2d = GetComponent<Rigidbody2D>();
     }
 
     void OnMouseDown()
     {
-        isDragging = true;
-        rb.gravityScale = 0; 
-        rb.linearVelocity = Vector2.zero; 
-        offset = transform.position - GetMouseWorldPosition();
+        if (isOnShelf) isOnShelf = false;
+
+        rb2d.bodyType = RigidbodyType2D.Kinematic; 
+        offset = transform.position - MouseWorldPosition();
     }
 
     void OnMouseDrag()
     {
-        if (isDragging)
-        {
-            Vector3 mousePosition = GetMouseWorldPosition();
-            transform.position = mousePosition + offset;
-        }
+        rb2d.MovePosition(MouseWorldPosition() + offset); 
     }
 
     void OnMouseUp()
-{
-    isDragging = false;
-    rb.gravityScale = 1; 
-
-
-    Collider2D shelfCollider = Physics2D.OverlapPoint(transform.position, LayerMask.GetMask("Shelf"));
-    if (shelfCollider != null && shelfCollider.CompareTag("Shelf"))
     {
         
-        Vector3 shelfPosition = shelfCollider.transform.position;
-        transform.position = new Vector3(transform.position.x, shelfPosition.y, shelfPosition.z);
-        rb.gravityScale = 0; 
-        rb.linearVelocity = Vector2.zero; 
-    }
-}
+        Collider2D shelfCollider = Physics2D.OverlapCircle(transform.position, snapRadius, LayerMask.GetMask("Default"));
 
-    Vector3 GetMouseWorldPosition()
+        if (shelfCollider != null && shelfCollider.CompareTag(destinationTag))
+        {
+            rb2d.MovePosition(shelfCollider.transform.position + new Vector3(0, 0, -0.01f));
+            isOnShelf = true;
+        }
+
+        rb2d.bodyType = isOnShelf ? RigidbodyType2D.Kinematic : RigidbodyType2D.Dynamic; 
+    }
+
+    Vector3 MouseWorldPosition()
     {
-        Vector3 mouseScreenPosition = Input.mousePosition;
-        mouseScreenPosition.z = Camera.main.WorldToScreenPoint(transform.position).z;
-        return Camera.main.ScreenToWorldPoint(mouseScreenPosition);
+        var mouseScreenPos = Input.mousePosition;
+        mouseScreenPos.z = Camera.main.WorldToScreenPoint(transform.position).z;
+        return Camera.main.ScreenToWorldPoint(mouseScreenPos);
+    }
+
+    private void OnDrawGizmosSelected()
+    {
+        Gizmos.color = Color.green;
+        Gizmos.DrawWireSphere(transform.position, snapRadius); 
     }
 }
